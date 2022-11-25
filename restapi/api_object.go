@@ -19,9 +19,7 @@ type apiObjectOpts struct {
 	createMethod  string
 	readMethod    string
 	updateMethod  string
-	updateData    string
 	destroyMethod string
-	destroyData   string
 	deletePath    string
 	searchPath    string
 	queryString   string
@@ -47,13 +45,12 @@ type APIObject struct {
 	queryString   string
 	debug         bool
 	readSearch    map[string]string
+	trackedKeys   map[string]string
 	id            string
 	idAttribute   string
 
 	/* Set internally */
 	data        map[string]interface{} /* Data as managed by the user */
-	updateData  map[string]interface{} /* Update data as managed by the user */
-	destroyData map[string]interface{} /* Destroy data as managed by the user */
 	apiData     map[string]interface{} /* Data as available from the API */
 	apiResponse string
 }
@@ -82,15 +79,10 @@ func NewAPIObject(iClient *APIClient, opts *apiObjectOpts) (*APIObject, error) {
 	if opts.updateMethod == "" {
 		opts.updateMethod = iClient.updateMethod
 	}
-	if opts.updateData == "" {
-		opts.updateData = iClient.updateData
-	}
 	if opts.destroyMethod == "" {
 		opts.destroyMethod = iClient.destroyMethod
 	}
-	if opts.destroyData == "" {
-		opts.destroyData = iClient.destroyData
-	}
+
 	if opts.postPath == "" {
 		opts.postPath = opts.path
 	}
@@ -124,8 +116,6 @@ func NewAPIObject(iClient *APIClient, opts *apiObjectOpts) (*APIObject, error) {
 		id:            opts.id,
 		idAttribute:   opts.idAttribute,
 		data:          make(map[string]interface{}),
-		updateData:    make(map[string]interface{}),
-		destroyData:   make(map[string]interface{}),
 		apiData:       make(map[string]interface{}),
 	}
 
@@ -157,28 +147,6 @@ func NewAPIObject(iClient *APIClient, opts *apiObjectOpts) (*APIObject, error) {
 		}
 	}
 
-	if opts.updateData != "" {
-		if opts.debug {
-			log.Printf("api_object.go: Parsing update data: '%s'", opts.updateData)
-		}
-
-		err := json.Unmarshal([]byte(opts.updateData), &obj.updateData)
-		if err != nil {
-			return &obj, fmt.Errorf("api_object.go: error parsing update data provided: %v", err.Error())
-		}
-	}
-
-	if opts.destroyData != "" {
-		if opts.debug {
-			log.Printf("api_object.go: Parsing destroy data: '%s'", opts.destroyData)
-		}
-
-		err := json.Unmarshal([]byte(opts.destroyData), &obj.destroyData)
-		if err != nil {
-			return &obj, fmt.Errorf("api_object.go: error parsing destroy data provided: %v", err.Error())
-		}
-	}
-
 	if opts.debug {
 		log.Printf("api_object.go: Constructed object: %s", obj.toString())
 	}
@@ -202,8 +170,7 @@ func (obj *APIObject) toString() string {
 	buffer.WriteString(fmt.Sprintf("debug: %t\n", obj.debug))
 	buffer.WriteString(fmt.Sprintf("read_search: %s\n", spew.Sdump(obj.readSearch)))
 	buffer.WriteString(fmt.Sprintf("data: %s\n", spew.Sdump(obj.data)))
-	buffer.WriteString(fmt.Sprintf("update_data: %s\n", spew.Sdump(obj.updateData)))
-	buffer.WriteString(fmt.Sprintf("destroy_data: %s\n", spew.Sdump(obj.destroyData)))
+	buffer.WriteString(fmt.Sprintf("tracked_keys: %s\n", spew.Sdump(obj.trackedKeys)))
 	buffer.WriteString(fmt.Sprintf("api_data: %s\n", spew.Sdump(obj.apiData)))
 	return buffer.String()
 }
@@ -365,14 +332,6 @@ func (obj *APIObject) updateObject() error {
 
 	b, _ := json.Marshal(obj.data)
 
-	updateData, _ := json.Marshal(obj.updateData)
-	if string(updateData) != "{}" {
-		if obj.debug {
-			log.Printf("api_object.go: Using update data '%s'", string(updateData))
-		}
-		b = updateData
-	}
-
 	putPath := obj.putPath
 	if obj.queryString != "" {
 		if obj.debug {
@@ -414,16 +373,7 @@ func (obj *APIObject) deleteObject() error {
 		deletePath = fmt.Sprintf("%s?%s", obj.deletePath, obj.queryString)
 	}
 
-	b := []byte{}
-	destroyData, _ := json.Marshal(obj.destroyData)
-	if string(destroyData) != "{}" {
-		if obj.debug {
-			log.Printf("api_object.go: Using destroy data '%s'", string(destroyData))
-		}
-		b = destroyData
-	}
-
-	_, err := obj.apiClient.sendRequest(obj.destroyMethod, strings.Replace(deletePath, "{id}", obj.id, -1), string(b))
+	_, err := obj.apiClient.sendRequest(obj.destroyMethod, strings.Replace(deletePath, "{id}", obj.id, -1), "")
 	if err != nil {
 		return err
 	}

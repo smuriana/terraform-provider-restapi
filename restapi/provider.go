@@ -92,6 +92,14 @@ func Provider() *schema.Provider {
 				Optional:    true,
 				Description: "When set, any PUT to the API for an object will copy these keys from the data the provider has gathered about the object. This is useful if internal API information must also be provided with updates, such as the revision of the object.",
 			},
+			"tracked_keys": {
+				Type: schema.TypeList,
+				Elem: &schema.Schema{
+					Type: schema.TypeString,
+				},
+				Optional:    true,
+				Description: "A list of keys in the data structure that will be checked against the server's responses to detect drift. If the `data` field and the server's response for that field do not match, the provider will update the server. Like the `id_attribute`, this value can point to \"deep\" data by using /-delimited strings. It is recommended to set this to the top level keys of our `data` element.",
+			},
 			"write_returns_object": {
 				Type:        schema.TypeBool,
 				Optional:    true,
@@ -216,7 +224,12 @@ func configureProvider(d *schema.ResourceData) (interface{}, error) {
 			copyKeys = append(copyKeys, v.(string))
 		}
 	}
-
+	trackedKeys := make([]string, 0)
+	if iTrackedKeys := d.Get("tracked_keys"); iTrackedKeys != nil {
+		for _, v := range iTrackedKeys.([]interface{}) {
+			trackedKeys = append(trackedKeys, v.(string))
+		}
+	}
 	headers := make(map[string]string)
 	if iHeaders := d.Get("headers"); iHeaders != nil {
 		for k, v := range iHeaders.(map[string]interface{}) {
@@ -234,6 +247,7 @@ func configureProvider(d *schema.ResourceData) (interface{}, error) {
 		timeout:             d.Get("timeout").(int),
 		idAttribute:         d.Get("id_attribute").(string),
 		copyKeys:            copyKeys,
+		trackedKeys:         trackedKeys,
 		writeReturnsObject:  d.Get("write_returns_object").(bool),
 		createReturnsObject: d.Get("create_returns_object").(bool),
 		xssiPrefix:          d.Get("xssi_prefix").(string),

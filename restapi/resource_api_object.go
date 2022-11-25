@@ -84,7 +84,7 @@ func resourceRestAPI() *schema.Resource {
 			},
 			"data": {
 				Type:        schema.TypeString,
-				Description: "Valid JSON object that this provider will manage with the API server.",
+				Description: "Valid JSON data that this provider will manage with the API server.",
 				Required:    true,
 				Sensitive:   isDataSensitive,
 				ValidateFunc: func(val interface{}, key string) (warns []string, errs []error) {
@@ -98,6 +98,14 @@ func resourceRestAPI() *schema.Resource {
 					}
 					return warns, errs
 				},
+			},
+			"tracked_keys": {
+				Type: schema.TypeList,
+				Elem: &schema.Schema{
+					Type: schema.TypeString,
+				},
+				Description: "A list of keys in the data structure that will be checked against the server's responses to detect drift. If the `data` field and the server's response for that field do not match, the provider will update the server. Like the `id_attribute`, this value can point to \"deep\" data by using /-delimited strings. It is recommended to set this to the top level keys of our `data` element.",
+				Optional:    true,
 			},
 			"debug": {
 				Type:        schema.TypeBool,
@@ -142,49 +150,17 @@ func resourceRestAPI() *schema.Resource {
 				ForceNew:    true,
 				Description: "Any changes to these values will result in recreating the resource instead of updating.",
 			},
-			"update_data": {
-				Type:        schema.TypeString,
-				Optional:    true,
-				Description: "Valid JSON object to pass during to update requests.",
-				Sensitive:   isDataSensitive,
-				ValidateFunc: func(val interface{}, key string) (warns []string, errs []error) {
-					v := val.(string)
-					if v != "" {
-						data := make(map[string]interface{})
-						err := json.Unmarshal([]byte(v), &data)
-						if err != nil {
-							errs = append(errs, fmt.Errorf("update_data attribute is invalid JSON: %v", err))
-						}
-					}
-					return warns, errs
-				},
-			},
-			"destroy_data": {
-				Type:        schema.TypeString,
-				Optional:    true,
-				Description: "Valid JSON object to pass during to destroy requests.",
-				Sensitive:   isDataSensitive,
-				ValidateFunc: func(val interface{}, key string) (warns []string, errs []error) {
-					v := val.(string)
-					if v != "" {
-						data := make(map[string]interface{})
-						err := json.Unmarshal([]byte(v), &data)
-						if err != nil {
-							errs = append(errs, fmt.Errorf("destroy_data attribute is invalid JSON: %v", err))
-						}
-					}
-					return warns, errs
-				},
-			},
 		}, /* End schema */
 
 	}
 }
 
-/* Since there is nothing in the ResourceData structure other
-   than the "id" passed on the command line, we have to use an opinionated
-   view of the API paths to figure out how to read that object
-   from the API */
+/*
+	 Since there is nothing in the ResourceData structure other
+	   than the "id" passed on the command line, we have to use an opinionated
+	   view of the API paths to figure out how to read that object
+		from the API
+*/
 func resourceRestAPIImport(d *schema.ResourceData, meta interface{}) (imported []*schema.ResourceData, err error) {
 	input := d.Id()
 
@@ -266,10 +242,33 @@ func resourceRestAPIRead(d *schema.ResourceData, meta interface{}) error {
 
 	err = obj.readObject()
 	if err == nil {
-		/* Setting terraform ID tells terraform the object was created or it exists */
 		log.Printf("resource_api_object.go: Read resource. Returned id is '%s'\n", obj.id)
-		d.SetId(obj.id)
-		setResourceState(obj, d)
+		id_to_set := obj.id
+
+		inconsistent_keys := make([]string, 0)
+
+		log.Printf("trackedKey1: %s", d.Get("tracked_key"))
+
+		if iTrackedKeys := d.Get("tracked_key"); iTrackedKeys != nil {
+			for _, v := range iTrackedKeys.([]interface{}) {
+				trackedKey := v.(string)
+				log.Printf("trackedKey1: %s", trackedKey)
+				if _, apiValue := obj.apiData[trackedKey]; apiValue {
+					if obj.data[trackedKey] != obj.apiData[trackedKey] {
+						inconsistent_keys = append(inconsistent_keys, trackedKey)
+						log.Printf("Inconsistent_key: %s", trackedKey)
+
+					}
+				}
+			}
+		}
+
+		if len(inconsistent_keys) > 0 {
+			return fmt.Errorf("TERRAFORM STATE CORRUPTED, keys [%s]", strings.Join(inconsistent_keys, ", "))
+		}
+
+		/* Setting terraform ID tells terraform the object was created or it exists */
+		d.SetId(id_to_set)
 	}
 	return err
 }
@@ -337,10 +336,13 @@ func resourceRestAPIExists(d *schema.ResourceData, meta interface{}) (exists boo
 	return exists, err
 }
 
-/* Simple helper routine to build an api_object struct
-   for the various calls terraform will use. Unfortunately,
-   terraform cannot just reuse objects, so each CRUD operation
-   results in a new object created */
+/*
+Simple helper routine to build an api_object struct
+
+	for the various calls terraform will use. Unfortunately,
+	terraform cannot just reuse objects, so each CRUD operation
+	results in a new object created
+*/
 func makeAPIObject(d *schema.ResourceData, meta interface{}) (*APIObject, error) {
 	opts, err := buildAPIObjectOpts(d)
 	if err != nil {
@@ -399,14 +401,8 @@ func buildAPIObjectOpts(d *schema.ResourceData) (*apiObjectOpts, error) {
 	if v, ok := d.GetOk("update_method"); ok {
 		opts.updateMethod = v.(string)
 	}
-	if v, ok := d.GetOk("update_data"); ok {
-		opts.updateData = v.(string)
-	}
 	if v, ok := d.GetOk("destroy_method"); ok {
 		opts.destroyMethod = v.(string)
-	}
-	if v, ok := d.GetOk("destroy_data"); ok {
-		opts.destroyData = v.(string)
 	}
 	if v, ok := d.GetOk("destroy_path"); ok {
 		opts.deletePath = v.(string)
@@ -414,6 +410,9 @@ func buildAPIObjectOpts(d *schema.ResourceData) (*apiObjectOpts, error) {
 	if v, ok := d.GetOk("query_string"); ok {
 		opts.queryString = v.(string)
 	}
+	/*if v, ok := d.GetOk("tracked_keys"); ok {
+		opts.queryString = v.(string)
+	}*/
 
 	readSearch := expandReadSearch(d.Get("read_search").(map[string]interface{}))
 	opts.readSearch = readSearch

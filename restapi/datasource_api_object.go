@@ -40,6 +40,12 @@ func dataSourceRestAPI() *schema.Resource {
 				Description: "When reading search results from the API, this key is used to identify the specific record to read. This should be a unique record such as 'name'. Similar to results_key, the value may be in the format of 'field/field/field' to search for data deeper in the returned object.",
 				Required:    true,
 			},
+			"tracked_keys": {
+				Type:        schema.TypeList,
+				Elem:        &schema.Schema{Type: schema.TypeString},
+				Description: "A list of keys in the data structure that will be checked against the server's responses to detect drift. If the `data` field and the server's response for that field do not match, the provider will update the server. Like the `id_attribute`, this value can point to \"deep\" data by using /-delimited strings. It is recommended to set this to the top level keys of our `data` element.",
+				Required:    true,
+			},
 			"search_value": {
 				Type:        schema.TypeString,
 				Description: "The value of 'search_key' will be compared to this value to determine if the correct object was found. Example: if 'search_key' is 'name' and 'search_value' is 'foo', the record in the array returned by the API with name=foo will be used.",
@@ -92,9 +98,11 @@ func dataSourceRestAPIRead(d *schema.ResourceData, meta interface{}) error {
 	}
 
 	searchKey := d.Get("search_key").(string)
+	trackedKeys := d.Get("tracked_keys").(string)
 	searchValue := d.Get("search_value").(string)
 	resultsKey := d.Get("results_key").(string)
 	idAttribute := d.Get("id_attribute").(string)
+	log.Printf("datasource_api_object.go:\trackedKeys:%s", trackedKeys)
 
 	if debug {
 		log.Printf("datasource_api_object.go:\npath: %s\nsearch_path: %s\nquery_string: %s\nsearch_key: %s\nsearch_value: %s\nresults_key: %s\nid_attribute: %s", path, searchPath, queryString, searchKey, searchValue, resultsKey, idAttribute)
