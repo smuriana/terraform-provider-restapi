@@ -84,7 +84,7 @@ func resourceRestAPI() *schema.Resource {
 			},
 			"data": {
 				Type:        schema.TypeString,
-				Description: "Valid JSON data that this provider will manage with the API server.",
+				Description: "Valid JSON object that this provider will manage with the API server.",
 				Required:    true,
 				Sensitive:   isDataSensitive,
 				ValidateFunc: func(val interface{}, key string) (warns []string, errs []error) {
@@ -364,13 +364,10 @@ func resourceRestAPIExists(d *schema.ResourceData, meta interface{}) (exists boo
 	return exists, err
 }
 
-/*
-Simple helper routine to build an api_object struct
-
-	for the various calls terraform will use. Unfortunately,
-	terraform cannot just reuse objects, so each CRUD operation
-	results in a new object created
-*/
+/* Simple helper routine to build an api_object struct
+   for the various calls terraform will use. Unfortunately,
+   terraform cannot just reuse objects, so each CRUD operation
+   results in a new object created */
 func makeAPIObject(d *schema.ResourceData, meta interface{}) (*APIObject, error) {
 	opts, err := buildAPIObjectOpts(d)
 	if err != nil {
@@ -429,8 +426,14 @@ func buildAPIObjectOpts(d *schema.ResourceData) (*apiObjectOpts, error) {
 	if v, ok := d.GetOk("update_method"); ok {
 		opts.updateMethod = v.(string)
 	}
+	if v, ok := d.GetOk("update_data"); ok {
+		opts.updateData = v.(string)
+	}
 	if v, ok := d.GetOk("destroy_method"); ok {
 		opts.destroyMethod = v.(string)
+	}
+	if v, ok := d.GetOk("destroy_data"); ok {
+		opts.destroyData = v.(string)
 	}
 	if v, ok := d.GetOk("destroy_path"); ok {
 		opts.deletePath = v.(string)
@@ -438,9 +441,6 @@ func buildAPIObjectOpts(d *schema.ResourceData) (*apiObjectOpts, error) {
 	if v, ok := d.GetOk("query_string"); ok {
 		opts.queryString = v.(string)
 	}
-	/*if v, ok := d.GetOk("tracked_keys"); ok {
-		opts.queryString = v.(string)
-	}*/
 
 	readSearch := expandReadSearch(d.Get("read_search").(map[string]interface{}))
 	opts.readSearch = readSearch
