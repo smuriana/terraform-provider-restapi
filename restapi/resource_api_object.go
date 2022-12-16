@@ -150,17 +150,49 @@ func resourceRestAPI() *schema.Resource {
 				ForceNew:    true,
 				Description: "Any changes to these values will result in recreating the resource instead of updating.",
 			},
+			"update_data": {
+				Type:        schema.TypeString,
+				Optional:    true,
+				Description: "Valid JSON object to pass during to update requests.",
+				Sensitive:   isDataSensitive,
+				ValidateFunc: func(val interface{}, key string) (warns []string, errs []error) {
+					v := val.(string)
+					if v != "" {
+						data := make(map[string]interface{})
+						err := json.Unmarshal([]byte(v), &data)
+						if err != nil {
+							errs = append(errs, fmt.Errorf("update_data attribute is invalid JSON: %v", err))
+						}
+					}
+					return warns, errs
+				},
+			},
+			"destroy_data": {
+				Type:        schema.TypeString,
+				Optional:    true,
+				Description: "Valid JSON object to pass during to destroy requests.",
+				Sensitive:   isDataSensitive,
+				ValidateFunc: func(val interface{}, key string) (warns []string, errs []error) {
+					v := val.(string)
+					if v != "" {
+						data := make(map[string]interface{})
+						err := json.Unmarshal([]byte(v), &data)
+						if err != nil {
+							errs = append(errs, fmt.Errorf("destroy_data attribute is invalid JSON: %v", err))
+						}
+					}
+					return warns, errs
+				},
+			},
 		}, /* End schema */
 
 	}
 }
 
-/*
-	 Since there is nothing in the ResourceData structure other
-	   than the "id" passed on the command line, we have to use an opinionated
-	   view of the API paths to figure out how to read that object
-		from the API
-*/
+/* Since there is nothing in the ResourceData structure other
+   than the "id" passed on the command line, we have to use an opinionated
+   view of the API paths to figure out how to read that object
+   from the API */
 func resourceRestAPIImport(d *schema.ResourceData, meta interface{}) (imported []*schema.ResourceData, err error) {
 	input := d.Id()
 
@@ -242,29 +274,25 @@ func resourceRestAPIRead(d *schema.ResourceData, meta interface{}) error {
 
 	err = obj.readObject()
 	if err == nil {
+		/* Setting terraform ID tells terraform the object was created or it exists */
 		log.Printf("resource_api_object.go: Read resource. Returned id is '%s'\n", obj.id)
 		id_to_set := obj.id
 
 		inconsistent_keys := make([]string, 0)
 
-		log.Printf("trackedKey1: %s", d.Get("tracked_key"))
-
 		if iTrackedKeys := d.Get("tracked_key"); iTrackedKeys != nil {
 			for _, v := range iTrackedKeys.([]interface{}) {
 				trackedKey := v.(string)
-				log.Printf("trackedKey1: %s", trackedKey)
 				if _, apiValue := obj.apiData[trackedKey]; apiValue {
 					if obj.data[trackedKey] != obj.apiData[trackedKey] {
 						inconsistent_keys = append(inconsistent_keys, trackedKey)
-						log.Printf("Inconsistent_key: %s", trackedKey)
-
 					}
 				}
 			}
 		}
 
 		if len(inconsistent_keys) > 0 {
-			return fmt.Errorf("TERRAFORM STATE CORRUPTED, keys [%s]", strings.Join(inconsistent_keys, ", "))
+			return fmt.Errorf("Terraform state corrupted, keys [%s]", strings.Join(inconsistent_keys, ", "))
 		}
 
 		/* Setting terraform ID tells terraform the object was created or it exists */
