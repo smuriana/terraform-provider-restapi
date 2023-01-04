@@ -47,6 +47,7 @@ type APIObject struct {
 	queryString   string
 	debug         bool
 	readSearch    map[string]string
+	trackedKeys   map[string]string
 	id            string
 	idAttribute   string
 

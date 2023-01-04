@@ -99,6 +99,14 @@ func resourceRestAPI() *schema.Resource {
 					return warns, errs
 				},
 			},
+			"tracked_keys": {
+				Type: schema.TypeList,
+				Elem: &schema.Schema{
+					Type: schema.TypeString,
+				},
+				Description: "A list of keys in the data structure that will be checked against the server's responses to detect drift. If the `data` field and the server's response for that field do not match, the provider will update the server. Like the `id_attribute`, this value can point to \"deep\" data by using /-delimited strings. It is recommended to set this to the top level keys of our `data` element.",
+				Optional:    true,
+			},
 			"debug": {
 				Type:        schema.TypeBool,
 				Description: "Whether to emit verbose debug output while working with the API object on the server.",
@@ -268,8 +276,27 @@ func resourceRestAPIRead(d *schema.ResourceData, meta interface{}) error {
 	if err == nil {
 		/* Setting terraform ID tells terraform the object was created or it exists */
 		log.Printf("resource_api_object.go: Read resource. Returned id is '%s'\n", obj.id)
-		d.SetId(obj.id)
-		setResourceState(obj, d)
+		id_to_set := obj.id
+
+		inconsistent_keys := make([]string, 0)
+
+		if iTrackedKeys := d.Get("tracked_key"); iTrackedKeys != nil {
+			for _, v := range iTrackedKeys.([]interface{}) {
+				trackedKey := v.(string)
+				if _, apiValue := obj.apiData[trackedKey]; apiValue {
+					if obj.data[trackedKey] != obj.apiData[trackedKey] {
+						inconsistent_keys = append(inconsistent_keys, trackedKey)
+					}
+				}
+			}
+		}
+
+		if len(inconsistent_keys) > 0 {
+			return fmt.Errorf("Terraform state corrupted, keys [%s]", strings.Join(inconsistent_keys, ", "))
+		}
+
+		/* Setting terraform ID tells terraform the object was created or it exists */
+		d.SetId(id_to_set)
 	}
 	return err
 }
