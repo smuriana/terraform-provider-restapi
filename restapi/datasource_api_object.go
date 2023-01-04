@@ -98,7 +98,6 @@ func dataSourceRestAPIRead(d *schema.ResourceData, meta interface{}) error {
 	}
 
 	searchKey := d.Get("search_key").(string)
-	trackedKeys := d.Get("tracked_keys").(string)
 	searchValue := d.Get("search_value").(string)
 	resultsKey := d.Get("results_key").(string)
 	idAttribute := d.Get("id_attribute").(string)
