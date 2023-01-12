@@ -1,7 +1,7 @@
 package main
 
 import (
-	"hashicorp/terraform-provider-restapi/restapi"
+	"github.com/smuriana/terraform-provider-restapi/restapi"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/plugin"
