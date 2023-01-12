@@ -189,10 +189,13 @@ func resourceRestAPI() *schema.Resource {
 	}
 }
 
-/* Since there is nothing in the ResourceData structure other
-   than the "id" passed on the command line, we have to use an opinionated
-   view of the API paths to figure out how to read that object
-   from the API */
+/*
+Since there is nothing in the ResourceData structure other
+
+	than the "id" passed on the command line, we have to use an opinionated
+	view of the API paths to figure out how to read that object
+	from the API
+*/
 func resourceRestAPIImport(d *schema.ResourceData, meta interface{}) (imported []*schema.ResourceData, err error) {
 	input := d.Id()
 
@@ -260,6 +263,39 @@ func resourceRestAPICreate(d *schema.ResourceData, meta interface{}) error {
 	return err
 }
 
+func searchKey(data map[string]interface{}, key string) (interface{}, bool) {
+	for k, v := range data {
+		if k == key {
+			return v, true
+		}
+		if submap, ok := v.(map[string]interface{}); ok {
+			if val, found := searchKey(submap, key); found {
+				return val, found
+			}
+		}
+	}
+	return nil, false
+}
+
+func track_keys(trackedKeys interface{}, obj *APIObject) error {
+	for _, v := range trackedKeys.([]interface{}) {
+		trackedKey := v.(string)
+		valueApiData, foundApiData := searchKey(obj.apiData, trackedKey)
+		valueData, foundData := searchKey(obj.data, trackedKey)
+		if !foundApiData {
+			return fmt.Errorf("Key '%s' not found in terraform state.\n", trackedKey)
+		}
+		if !foundData {
+			return fmt.Errorf("Key '%s' not found in API Rest response.\n", trackedKey)
+		}
+		if valueApiData != valueData {
+			return fmt.Errorf("Values of key '%s' are different in terraform state and API Rest response.\n", trackedKey)
+		}
+	}
+
+	return nil
+}
+
 func resourceRestAPIRead(d *schema.ResourceData, meta interface{}) error {
 	obj, err := makeAPIObject(d, meta)
 	if err != nil {
@@ -277,22 +313,9 @@ func resourceRestAPIRead(d *schema.ResourceData, meta interface{}) error {
 		/* Setting terraform ID tells terraform the object was created or it exists */
 		log.Printf("resource_api_object.go: Read resource. Returned id is '%s'\n", obj.id)
 		id_to_set := obj.id
-
-		inconsistent_keys := make([]string, 0)
-
-		if iTrackedKeys := d.Get("tracked_key"); iTrackedKeys != nil {
-			for _, v := range iTrackedKeys.([]interface{}) {
-				trackedKey := v.(string)
-				if _, apiValue := obj.apiData[trackedKey]; apiValue {
-					if obj.data[trackedKey] != obj.apiData[trackedKey] {
-						inconsistent_keys = append(inconsistent_keys, trackedKey)
-					}
-				}
-			}
-		}
-
-		if len(inconsistent_keys) > 0 {
-			return fmt.Errorf("Terraform state corrupted, keys [%s]", strings.Join(inconsistent_keys, ", "))
+		iTrackedKeys := d.Get("tracked_keys")
+		if iTrackedKeys != nil {
+			err = track_keys(iTrackedKeys, obj)
 		}
 
 		/* Setting terraform ID tells terraform the object was created or it exists */
@@ -364,10 +387,13 @@ func resourceRestAPIExists(d *schema.ResourceData, meta interface{}) (exists boo
 	return exists, err
 }
 
-/* Simple helper routine to build an api_object struct
-   for the various calls terraform will use. Unfortunately,
-   terraform cannot just reuse objects, so each CRUD operation
-   results in a new object created */
+/*
+Simple helper routine to build an api_object struct
+
+	for the various calls terraform will use. Unfortunately,
+	terraform cannot just reuse objects, so each CRUD operation
+	results in a new object created
+*/
 func makeAPIObject(d *schema.ResourceData, meta interface{}) (*APIObject, error) {
 	opts, err := buildAPIObjectOpts(d)
 	if err != nil {

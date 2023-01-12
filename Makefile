@@ -1,14 +1,14 @@
-HOSTNAME=local.com
-NAMESPACE=phoenixnap
+HOSTNAME=terraform.local
+NAMESPACE=local
 NAME=restapi
 BINARY=terraform-provider-${NAME}
-VERSION=0.0.1
+VERSION=1.0.0
 OS_ARCH=linux_amd64
 
 default: install
 
 build:
-	go build -o ${BINARY}
+	go build -o ${BINARY}_v${VERSION}
 
 release:
 	GOOS=darwin GOARCH=amd64 go build -o ./bin/${BINARY}_${VERSION}_darwin_amd64
@@ -26,4 +26,4 @@ release:
 
 install: build
 	mkdir -p ~/.terraform.d/plugins/${HOSTNAME}/${NAMESPACE}/${NAME}/${VERSION}/${OS_ARCH}
-	mv ${BINARY} ~/.terraform.d/plugins/${HOSTNAME}/${NAMESPACE}/${NAME}/${VERSION}/${OS_ARCH}
+	cp ${BINARY}_v${VERSION} ~/.terraform.d/plugins/${HOSTNAME}/${NAMESPACE}/${NAME}/${VERSION}/${OS_ARCH}/${BINARY}_v${VERSION}

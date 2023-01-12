@@ -2,6 +2,7 @@ package restapi
 
 import (
 	"fmt"
+	"log"
 	"math"
 	"net/url"
 
@@ -225,6 +226,8 @@ func configureProvider(d *schema.ResourceData) (interface{}, error) {
 		}
 	}
 	trackedKeys := make([]string, 0)
+	log.Printf("+++++++++ provider.go: tracked keys '%s'\n", d.Get("tracked_key"))
+
 	if iTrackedKeys := d.Get("tracked_keys"); iTrackedKeys != nil {
 		for _, v := range iTrackedKeys.([]interface{}) {
 			trackedKeys = append(trackedKeys, v.(string))

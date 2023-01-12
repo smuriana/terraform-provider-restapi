@@ -27,6 +27,7 @@ type apiObjectOpts struct {
 	queryString   string
 	debug         bool
 	readSearch    map[string]string
+	trackedKeys   map[string]string
 	id            string
 	idAttribute   string
 	data          string
@@ -122,6 +123,7 @@ func NewAPIObject(iClient *APIClient, opts *apiObjectOpts) (*APIObject, error) {
 		queryString:   opts.queryString,
 		debug:         opts.debug,
 		readSearch:    opts.readSearch,
+		trackedKeys:   opts.trackedKeys,
 		id:            opts.id,
 		idAttribute:   opts.idAttribute,
 		data:          make(map[string]interface{}),

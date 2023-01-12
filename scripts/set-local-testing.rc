@@ -8,7 +8,7 @@ else
   echo "
 provider_installation {
   dev_overrides {
-    \"Mastercard/restapi\" = \"$ROOTDIR\"
+    \"sergiom/restapi\" = \"$ROOTDIR\"
   }
 }
 " > "$FILE"
