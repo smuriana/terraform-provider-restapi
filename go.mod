@@ -3,7 +3,7 @@ module hashicorp/terraform-provider-restapi
 go 1.19
 
 require (
-	github.com/Mastercard/terraform-provider-restapi v1.18.0
+	github.com/sergiom/terraform-provider-restapi v1.18.0
 	github.com/davecgh/go-spew v1.1.1
 	github.com/hashicorp/terraform-plugin-sdk/v2 v2.24.1
 	golang.org/x/oauth2 v0.4.0
