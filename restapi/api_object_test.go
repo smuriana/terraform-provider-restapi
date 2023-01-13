@@ -6,7 +6,7 @@ import (
 	"log"
 	"testing"
 
-	"github.com/Mastercard/terraform-provider-restapi/fakeserver"
+	"github.com/smuriana/terraform-provider-restapi/fakeserver"
 )
 
 var testDebug = false

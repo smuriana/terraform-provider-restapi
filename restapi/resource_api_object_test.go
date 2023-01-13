@@ -17,8 +17,8 @@ import (
 	"os"
 	"testing"
 
-	"github.com/Mastercard/terraform-provider-restapi/fakeserver"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
+	"github.com/smuriana/terraform-provider-restapi/fakeserver"
 )
 
 // example.Widget represents a concrete Go type that represents an API resource
@@ -106,9 +106,12 @@ func TestAccRestApiObject_Basic(t *testing.T) {
 	svr.Shutdown()
 }
 
-/* This function generates a terraform JSON configuration from
-   a name, JSON data and a list of params to set by coaxing it
-   all to maps and then serializing to JSON */
+/*
+This function generates a terraform JSON configuration from
+
+	a name, JSON data and a list of params to set by coaxing it
+	all to maps and then serializing to JSON
+*/
 func generateTestResource(name string, data string, params map[string]interface{}) string {
 	strData, _ := json.Marshal(data)
 	config := []string{
