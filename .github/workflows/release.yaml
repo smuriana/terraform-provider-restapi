@@ -39,6 +39,11 @@ jobs:
         with:
           gpg_private_key: ${{ secrets.GPG_PRIVATE_KEY }}
           passphrase: ${{ secrets.PASSPHRASE }}
+       - 
+        name: Configure git for private modules
+        env:
+          GITHUB_API_TOKEN: ${{ secrets.GH_API_TOKEN }}
+        run: git config --global url."https://x:${GITHUB_API_TOKEN}@github.com".insteadOf "https://github.com"
       -
         name: Run GoReleaser
         uses: goreleaser/goreleaser-action@v3.0.0
