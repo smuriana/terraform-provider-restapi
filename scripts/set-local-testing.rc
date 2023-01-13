@@ -8,7 +8,7 @@ else
   echo "
 provider_installation {
   dev_overrides {
-    \"sergiom/restapi\" = \"$ROOTDIR\"
+    \"smuriana/restapi\" = \"$ROOTDIR\"
   }
 }
 " > "$FILE"
